@@ -1,6 +1,8 @@
 import threading
 import requests
 import time
+import asyncio
+import aiohttp
 
 
 def get_data_sync(urls):
@@ -40,12 +42,52 @@ def get_data_threading(urls):
     et=time.time()
     elapsed_time=et-st
     print("Execution time:",elapsed_time,"seconds.")
+    
+    
+async def get_data_async_but_as_wrapper(urls):
+    st=time.time()
+    json_array=[]
+    
+    async with aiohttp.ClientSession() as session:
+        for url in urls:
+            async with session.get(url) as response:
+                json_array.append(await response.json())
 
+    et=time.time()
+    elapsed_time=et-st
+    print("Execution time:",elapsed_time,"seconds.")
+    return json_array
+    
+    
+async def get_data(session,url,json_array):
+    async with session.get(url) as response:
+        json_array.append(await response.json())
         
+
+async def get_data_async_concurrently(urls):
+    st=time.time()
+    json_array=[]
+    async with aiohttp.ClientSession() as session:
+        tasks=[]
+        for url in urls:
+            tasks.append(asyncio.ensure_future(get_data(session,url,json_array)))
+        await asyncio.gather(*tasks)
         
+    
+    et=time.time()
+    elapsed_time=et-st
+    print("Execution time:",elapsed_time,"seconds.")
+    return json_array
+    
+    
+    
+    
+
+     
         
 urls=["http://postman-echo.com/delay/3"] * 10
 
 # get_data_threading(urls) #3.48 sec
-
 # get_data_sync(urls) #33.37 sec
+# asyncio.run(get_data_async_but_as_wrapper(urls)) #32.12 sec
+# asyncio.run(get_data_async_concurrently(urls)) #4.16 sec
